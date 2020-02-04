@@ -17,10 +17,10 @@ Doctor summary (to see all details, run flutter doctor -v):
 
 ## 2. 升级对工程的影响
 
-升级高版本CocoaPods后我们发现以下两个重要的改动，会对工程的编译造成影响。
+高版本CocoaPods有两个重要的改动，影响到工程的正常编译。
 
-- 高版本中.framework静态库将不会在Pods/Headers下生成相关header，同样build settings中header_search_paths中也移除了该类静态库的搜索路径。.framework库的搜索路径只在framework_search_path中添加，且与podspec中的依赖相关，如果该配置项未添加依赖库的搜索路径，工程将找不到头文件。
-- 高版本CocoaPods将会在Target->Build Phases->[CP]Copy Pods Resources中添加所有组件的资源文件路径，由于工程庞大，该列表中添加的资源文件路径多达350个。
+1. CocoaPods升级高版本后，.framework静态库将不会在Pods/Headers路径下生成相关库的header，Target->Build Settings->header_search_paths中也移除了该类静态库的搜索路径，该类库的搜索路径需要配置在framework_search_paths下。只要podsepc中正确添加依赖，.framework静态库的搜索路径会自动添加到framework_search_paths配置项中。
+2. 高版本CocoaPods将会在Target->Build Phases->[CP]Copy Pods Resources中添加所有组件的资源文件路径，由于工程庞大，该列表中添加的资源文件路径多达350个。
 
 下面我们对这两个改动导致的编译问题进行分析，并提出目前最有效的解决方案：
 
@@ -114,25 +114,25 @@ source "http://gitlab.mogujie.org/CocoaPodsRepos/CocoaPodsRepoSpecs.git"
 source 'http://gitlab.mogujie.org/im/IMPodSpecs.git'
 ```
 
-**2.2升级出现的问题二**
+**2.2 升级出现的问题二**
 
-&emsp;&emsp;解决问题一后工程就可以正常编译了，但进行多台电脑测试时发现部分电脑主客编译失败，报错如下：
+&emsp;&emsp;解决问题一后主客继续编译，在Linking阶段出现报错，信息如下：
 
 ```
-Build operation failed without specifying any errors. Individual build tasks may have failed for unknown reasons.
-One possible cause is if there are too many (possibly zombie) processes; in this case, rebooting may fix the problem.
-Some individual build task failures (up to 12) may be listed below.
+Build operation failed without specifying any errors. Individual build tasks may have failed for unknown reasons.One possible cause is if there are too many (possibly zombie) processes; in this case, rebooting may fix the problem.Some individual build task failures (up to 12) may be listed below.
 ```
 
 **2.2.1 报错原因查找**
 
-&emsp;&emsp;由于报错中没有给我们足够的信息，无法定位到报错原因，所以在CocoaPods的github-issues中查找类似的问题。[issue#7383](https://github.com/CocoaPods/CocoaPods/issues/7383)与主客的报错完全相同，CocoaPods作者的答复是工程中资源输入输出路径太多，而Xcode环境对此有所限制导致的bug。
+&emsp;&emsp;由于报错中没有给我们足够的信息，无法定位到报错原因，所以在CocoaPods的github-issues中查找类似的问题。[issue#7383](https://github.com/CocoaPods/CocoaPods/issues/7383)中提出的问题与主客的编译错误信息完全相同，而CocoaPods作者的答复是工程中资源输入输出路径太多，Xcode环境对此有所限制。
 
-&emsp;&emsp;找到Target->Build Phases->[CP]Copy Pods Resources，可以看到列表中添加了350多个资源路径。再对比1.2.1版本的主客，发现低版本中资源路径列表是空的，这是高版本CocoaPods新的改动。
+&emsp;&emsp;找到Target->Build Phases->[CP]Copy Pods Resources，可以看到列表中添加了350多个资源路径。再对比1.2.1版本的主客，果然该版本主客中资源路径列表是空的，可以确定CocoaPods在版本迭代中对资源路径内容添加方面做出了改动。
+
+![input_output_file_paths](https://github.com/Y52/MarkdownPic/blob/master/pic/input_output_file_paths.png?raw=true)
 
 **2.2.2 解决方案**
 
-&emsp;&emsp;由于问题二是高版本CocoaPods改动导致的，我们直接在CocoaPods配置项上寻找解决方案。查找[CocoaPods Guide](https://guides.CocoaPods.org/syntax/podfile.html#install_bang)文档，在install!中新增了几个仅高版本适用的配置项，其中:
+&emsp;&emsp;由于该问题是高版本CocoaPods的改动所导致，我们直接在CocoaPods提供的新配置项中寻找解决方案。查找[CocoaPods Guide](https://guides.CocoaPods.org/syntax/podfile.html#install_bang)文档，发现在install!中新增了几个仅高版本适用的配置项，其中:
 
 ```
 :disable_input_output_path
@@ -141,9 +141,9 @@ Whether to disable the input & output paths of the CocoaPods script phases (Copy
 this option defaults to false.
 ```
 
-​		可以看到，**:disable_input_output_path**选项可以用来禁止工程生成资源路径，而这个选项默认是关闭的。
+&emsp;&emsp;可以看到，**:disable_input_output_path**选项可以用来禁止工程生成资源路径，而这个选项默认是关闭的。
 
-**综上：**在Podfile文件中开启:disable_input_output_path选项就可以解决问题二。
+**综上：**在Podfile文件中开启**:disable_input_output_path**选项，可以禁止高版本CocoaPods下的主客生成资源路径列表，且与1.2.1版本主客相同，不会增加额外的升级成本。
 
 ## 3. 升级对业务的影响
 
