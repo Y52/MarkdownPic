@@ -1,6 +1,0 @@
-framework module boost {
-  umbrella header "boost-umbrella.h"
-
-  export *
-  module * { export * }
-}
