@@ -5,6 +5,8 @@
 - 利用pod lib create boost生成私有库，把boost文件拉到库里面替换Classes文件夹，不要放到Classes下，不然产出的framework中Headers也在Classes下，这样路径就不对了。
 - 对比MGJMars/mars.framework中包含的boost头文件，产出boost.framework，mars/boost/下的文件很多都是没用的，拉进来会报C++错误。
 - 编译成功后用产出脚本产出framework。
+- 产出framework时注意了，因为是对boost这个target进行产出，然后要进入Pods/boost这个target，修改ma ch为static_framework，不然会产出动态库！！！
+- 然后动态库和静态库的区别就是动态库是可执行文件，静态库就是文本差不多
 - 把boost.framework放到与mars.framework同级目录
 
 **2.MGJMars.framework**
